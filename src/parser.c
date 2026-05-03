@@ -1,61 +1,12 @@
 // this takes forever
 // #include "builtins.h"
 #include "parser.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct StringVec StringVec;
-
-struct String {
-  char *str;
-  size_t len, cap;
-};
-
-struct StringVec {
-  String *arr;
-  size_t len, cap;
-};
-
-const char* RedirStr[] = {
-  "<",
-  ">",
-  ">>",
-  ">&",
-  ">>&"
-};
-
-struct Redirection {
-  RedirType type;
-  String target;
-};
-
-struct Command {
-  String *argv;
-  size_t argc, argv_cap;
-
-  Redirection *redirs;
-  size_t nredirs, redirs_cap;
-};
-
-// example: ls -l | grep ".c" > list_code.txt
-// ls -l
-// grep ...
-struct Pipeline {
-  Command *cmds; // separated by '|'
-  size_t ncmds, cmds_cap;
-  int background;
-};
-
-// TODO: struct Job --- multiple Pipelines
-// ls -l | grep ".c" && pwd ; echo "Done"
-//
-// Pipelines:
-// ls -l | grep ".c"      GO_NEXT_IF_SUCESSED
-// pwd                    GO_NEXT
-// echo "Done"            END
-
-void read_command(char **inp) {
+void read_line(char **inp) {
   size_t sz = 0;
   ssize_t nread;
   do {
@@ -68,96 +19,41 @@ void read_command(char **inp) {
   } while (1);
 }
 
-static void *xmalloc(size_t size) {
-  void *tmp = malloc(size);
-  if (tmp == NULL) {
-    perror("malloc");
-    exit(EXIT_FAILURE);
-  }
-  return tmp;
-}
-
-static void *xrealloc(void *buf, size_t size) {
-  void *tmp = realloc(buf, size);
-  if (tmp == NULL) {
-    perror("realloc");
-    exit(EXIT_FAILURE);
-  }
-  return tmp;
-}
-
-// static char *xstrdup(const char *str) {
-//   char *tmp = strdup(str);
-//   if (tmp == NULL) {
-//     perror("strdup");
-//     exit(EXIT_FAILURE);
-//   }
-//   return tmp;
-// }
-
-// buf: pointer to the position of array
-static void reserve_buffer(void **buf, size_t *len, size_t *cap, size_t init, size_t sz) {
-  if (*cap == 0) {
-    *buf = xmalloc(init * sz);
-    *cap = init;
-  }
-  if (*len + 2 > *cap) {
-    *buf = xrealloc(*buf, (*cap) * 2 * sz);
-    (*cap) *= 2;
-  }
-}
-
-static void append_char_to_string(String *str, char c) {
-  reserve_buffer((void**)(&str->str), &str->len, &str->cap, 32, sizeof(char));
-  (str->str)[str->len++] = c;
-  (str->str)[str->len] = '\0';
-}
-
-static void append_string_to_stringvec(StringVec *vec, String str) {
-  reserve_buffer((void**)(&vec->arr), &vec->len, &vec->cap, 16, sizeof(String));
-  (vec->arr)[vec->len++] = str;
-  // TODO: end element? NULL cannot be used
-}
 
 static void append_arg_to_command(Command *cmd, String arg) {
   reserve_buffer((void**)(&cmd->argv), &cmd->argc, &cmd->argv_cap, 8, sizeof(String));
   (cmd->argv)[cmd->argc++] = arg;
-  // TODO: end element? NULL cannot be used
 }
 
 static void append_redir_to_command(Command *cmd, Redirection redir) {
   reserve_buffer((void**)(&cmd->redirs), &cmd->nredirs, &cmd->redirs_cap, 4, sizeof(Redirection));
-  // o(1) -- redirs[id] = redir
-  // redirs[id].type = redir.type
-  // redirs[id].target = redir.target
   (cmd->redirs)[(cmd->nredirs)++] = redir; 
-  // TODO: end element? NULL cannot be used
 }
 
 static void append_command_to_pipeline(Pipeline *pipe, Command cmd) {
   reserve_buffer((void**)(&pipe->cmds), &pipe->ncmds, &pipe->cmds_cap, 8, sizeof(Command));
-  // o(1) -- cmds[id] = cmd
   (pipe->cmds)[(pipe->ncmds)++] = cmd;
-  // TODO: end element? NULL cannot be used
 }
 
-// TODO: APPEND pipeline to job
-// static void append_
-
+static void append_pipeline_to_commandlist(CommandList *cmdlst, Pipeline pipe) {
+  reserve_buffer((void**)(&cmdlst->pipes), &cmdlst->npipes, &cmdlst->pipes_cap, 8, sizeof(Pipeline));
+  (cmdlst->pipes)[(cmdlst->npipes)++] = pipe;
+}
 
 static int is_redir_char(char c) {
   return c == '<' || c == '>' || c == '&'; 
 }
 
 // > list_code.txt
-static int parse_redirection(String redir, String target, Redirection *out) {
-  RedirType r = R_END;
+static ParserStatus parse_redirection(String redir, String target, Redirection *out) {
+  RedirType r = R_NONE;
   for (int i = 0; i < REDIR_LEN; i++) {
     if (strcmp(RedirStr[i], redir.str) == 0) {
       r = i;
+      break;
     }
   }
-  if (r == R_END) return PARSER_FAILED;
+  if (r == R_NONE) return PARSER_FAILED;
   out->type = r;
 
   for (int i = 0; i < target.len; i++)
@@ -168,15 +64,19 @@ static int parse_redirection(String redir, String target, Redirection *out) {
   return PARSER_SUCESSED;
 }
 
+static void free_command(Command *cmd) {
+  free(cmd->argv);
+  free(cmd->redirs);
+}
+
 static int command_parser_failed(Command *out) {
-  free(out->argv);
-  free(out->redirs);
+  free_command(out);
   return PARSER_FAILED;
 }
 
 // ls -l
 // grep ".c" > list_code.txt
-static int parse_command(StringVec *vec, Command *out) {
+static ParserStatus parse_command(StringVec *vec, Command *out) {
   size_t len = vec->len;
   int p = -1; // arg's last position
   for (int i = 0; i < len; i++) {
@@ -197,17 +97,29 @@ static int parse_command(StringVec *vec, Command *out) {
   return PARSER_SUCESSED;
 }
 
+static void free_pipeline(Pipeline *pipe) {
+  for (int i = 0; i < pipe->ncmds; i++)
+    free_command(&pipe->cmds[i]);
+  free(pipe->cmds);
+}
+
 static int pipeline_parser_failed(Pipeline *out) {
-  free(out->cmds);
+  free_pipeline(out);
   return PARSER_FAILED;
 }
 
 // ls -l | grep ".c" > list_code.txt
-int parse_pipeline(StringVec *vec, Pipeline *out) { // TODO: change change `out` to Job*
+static ParserStatus parse_pipeline(StringVec *vec, Pipeline *out) { // TODO: change change `out` to Job*
   size_t len = vec->len;
+  // TODO: review this, background or separator
+  // if (strcmp(vec->arr[len - 1].str, "&") == 0) {
+  //   out->background = 1;
+  //   vec->len -= 1;
+  // }
+
   int prev = -1;
   for (int i = 0; i < len; i++) {
-    if (vec->arr[i].str[0] == '|') {
+    if (strcmp(vec->arr[i].str, "|") == 0) {
       if (i == (int)len - 1) {
         return pipeline_parser_failed(out); // TODO: need to be handled 
       }
@@ -219,7 +131,10 @@ int parse_pipeline(StringVec *vec, Pipeline *out) { // TODO: change change `out`
       }
       prev = i;
       Command now = {0};
-      if (parse_command(&cur, &now) == PARSER_FAILED)
+      ParserStatus status = parse_command(&cur, &now);
+      free(cur.arr);
+
+      if (status == PARSER_FAILED)
           return pipeline_parser_failed(out);
 
       append_command_to_pipeline(out, now);
@@ -231,10 +146,108 @@ int parse_pipeline(StringVec *vec, Pipeline *out) { // TODO: change change `out`
     append_string_to_stringvec(&cur, vec->arr[i]);
   }
   Command now = {0};
-  if (parse_command(&cur, &now) == PARSER_FAILED)
+  ParserStatus status = parse_command(&cur, &now);
+  free(cur.arr);
+
+  if (status == PARSER_FAILED)
       return pipeline_parser_failed(out);
 
   append_command_to_pipeline(out, now);
+  
+  return PARSER_SUCESSED;
+}
+
+static void free_commandlist(CommandList *cmdlst) {
+  for (int i = 0; i < cmdlst->npipes; i++)
+    free_pipeline(&cmdlst->pipes[i]);
+  free(cmdlst->pipes);
+  free_stringvec(cmdlst->raw);
+}
+
+static int line_parser_failed(CommandList *out) {
+  free_commandlist(out);
+  return PARSER_FAILED;
+}
+
+static Separator get_sep_id(char *str) {
+  for (int i = 0; i < SEP_LEN; i++) {
+    if (strcmp(str, SepStr[i]) == 0)
+        return i;
+  }
+  return S_NONE;
+}
+
+ ParserStatus parse_line(CommandList *out) {
+  *out = (CommandList){0};
+  char *line = NULL;
+  read_line(&line);
+  int len = strlen(line);
+  
+  StringVec vec = {0};
+  for (int i = 0; i < len; i++) {
+    if (line[i] == ' ') continue;
+    String now = {0};
+
+    int p = i - 1;
+    while (p + 1 < len && line[p + 1] != ' ') {
+      ++p;
+      append_char_to_string(&now, line[p]);
+    }
+
+    append_string_to_stringvec(&vec, now);
+
+    i = p;
+  }
+  free(line);
+
+  out->raw = vec;
+  
+  int flag = 0; // if ended with a '&'
+  int prev = -1, n = vec.len;
+  for (int i = 0; i < n; i++) {
+    Separator sep = get_sep_id(vec.arr[i].str);
+    if (sep != S_NONE) {
+      if (i == (int)n - 1) {
+        if (sep == S_BG) {
+          flag = 1;
+        } else {
+          return line_parser_failed(out); // TODO: need to be handled 
+        }
+      }
+      if (prev == i - 1) return line_parser_failed(out);
+
+      StringVec cur = {0};
+      for (int j = prev + 1; j < i; j++) {
+        append_string_to_stringvec(&cur, vec.arr[j]);
+      }
+      prev = i;
+      Pipeline now = {0};
+      ParserStatus status = parse_pipeline(&cur, &now);
+      free(cur.arr);
+
+      if (status == PARSER_FAILED)
+          return line_parser_failed(out);
+      now.sep = sep;
+
+      append_pipeline_to_commandlist(out, now);
+    }
+  }
+  
+  if (flag == 0) {
+    StringVec cur = {0};
+    for (int i = prev + 1; i < n; i++) {
+      append_string_to_stringvec(&cur, vec.arr[i]);
+    }
+    Pipeline now = {0};
+    ParserStatus status = parse_pipeline(&cur, &now);
+    free(cur.arr);
+
+    if (status == PARSER_FAILED)
+        return line_parser_failed(out);
+    now.sep = S_SEMI;
+
+    append_pipeline_to_commandlist(out, now);
+  }
   
   return PARSER_SUCESSED;
 }
@@ -265,7 +278,8 @@ static void print_pipeline(Pipeline *pipe) {
   printf("\n");
 }
 
-// WARN: for testing only
+
+
 // int main() {
 //   char *str = NULL;
 //   read_command(&str);
@@ -300,3 +314,12 @@ static void print_pipeline(Pipeline *pipe) {
 
 //   return 0;
 // }
+
+// TODO: ls -a>>out.txt is also valid, check token parsing
+// TODO: future feature:
+// ls|grep c
+// echo hi>out.txt
+// echo "hello world"
+// echo 'a b c'
+// echo foo\ bar
+// ls -a>>out.txt
