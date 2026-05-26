@@ -9,5 +9,6 @@ static int handler(Command *cmd) {
 builtin_command_t builtin_exit = {
   .name = "exit",
   .description = "exit the shell",
-  .handler = handler
+  .handler = handler,
+  .run_in_parent = 1
 };

@@ -14,6 +14,7 @@ typedef struct builtin_command_t builtin_command_t;
 struct builtin_command_t {
   char *name, *description;
   int (*handler)();
+  int run_in_parent;
 };
 
 extern builtin_command_t *builtin_commands[];

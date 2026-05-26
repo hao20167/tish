@@ -44,5 +44,8 @@ static int handler(Command *cmd) {
 }
 
 builtin_command_t builtin_cd = {
-    .name = "cd", .description = "Go to the $(target) path", .handler = handler
+  .name = "cd", 
+  .description = "Go to the $(target) path", 
+  .handler = handler,
+  .run_in_parent = 1
 };
