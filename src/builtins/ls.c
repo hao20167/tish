@@ -1,49 +1,48 @@
 #include "ls.h"
 #include "builtins.h"
 #include "parser.h"
-#include "utils.h"
 #include <sys/stat.h>
 #include <dirent.h>
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <string.h>
 
-static void print_permission(FILE *out, mode_t mode) {
-  if (out == NULL) out = stdout;
-  fprintf(out, "%c", S_ISDIR(mode) ? 'd' : '-');
-  fprintf(out, "%c", (mode & S_IRUSR) ? 'r' : '-');
-  fprintf(out, "%c", (mode & S_IWUSR) ? 'w' : '-');
-  fprintf(out, "%c", (mode & S_IXUSR) ? 'x' : '-');
-  fprintf(out, "%c", (mode & S_IRGRP) ? 'r' : '-');
-  fprintf(out, "%c", (mode & S_IWGRP) ? 'w' : '-');
-  fprintf(out, "%c", (mode & S_IXGRP) ? 'x' : '-');
-  fprintf(out, "%c", (mode & S_IROTH) ? 'r' : '-');
-  fprintf(out, "%c", (mode & S_IWOTH) ? 'w' : '-');
-  fprintf(out, "%c", (mode & S_IXOTH) ? 'x' : '-');
+static void print_permission(mode_t mode) {
+  printf("%c", S_ISDIR(mode) ? 'd' : '-');
+  printf("%c", (mode & S_IRUSR) ? 'r' : '-');
+  printf("%c", (mode & S_IWUSR) ? 'w' : '-');
+  printf("%c", (mode & S_IXUSR) ? 'x' : '-');
+  printf("%c", (mode & S_IRGRP) ? 'r' : '-');
+  printf("%c", (mode & S_IWGRP) ? 'w' : '-');
+  printf("%c", (mode & S_IXGRP) ? 'x' : '-');
+  printf("%c", (mode & S_IROTH) ? 'r' : '-');
+  printf("%c", (mode & S_IWOTH) ? 'w' : '-');
+  printf("%c", (mode & S_IXOTH) ? 'x' : '-');
 }
 
-static int handler(FILE *out, Command *cmd) {
-  if (out == NULL) out = stdout;
-  if (cmd->argc > 2) {
+static int handler(Command *cmd) {
+  size_t argc = cmd->argc;
+  if (argc > 3) {
     // TODO: handle more flexible command types
     return COMMAND_FAILED;
   }
 
   char *path = ".";
   int is_all = 0, is_listing = 0;
-  if (cmd->argc >= 1) {
-    String *argv = cmd->argv;
+  if (argc >= 2) {
+    char **argv = cmd->argv;
 
-    String fst = argv[0];
-    if (fst.str[0] != '-') {
-      path = fst.str;
+    char *fst = argv[1];
+    if (fst[0] != '-') {
+      path = fst;
     } else {
-      for (int i = 0; i < fst.len; i++) {
-        if (fst.str[i] == 'a') is_all = 1;
-        if (fst.str[i] == 'l') is_listing = 1;
+      for (int i = 0; i < strlen(fst); i++) {
+        if (fst[i] == 'a') is_all = 1;
+        if (fst[i] == 'l') is_listing = 1;
       }
-      if (cmd->argc >= 2) {
-        path = argv[1].str;
+      if (argc >= 3) {
+        path = argv[2];
       }
     }
   }
@@ -63,24 +62,24 @@ static int handler(FILE *out, Command *cmd) {
 
     if (is_listing) {
       if (lstat(full_path, &st) == 0) {
-        print_permission(out, st.st_mode);
-        fprintf(out, " %ld", (long)st.st_nlink);
-        fprintf(out, " %s %s", getpwuid(st.st_uid)->pw_name, getgrgid(st.st_gid)->gr_name);
-        fprintf(out, " %5ld", (long)st.st_size);
+        print_permission(st.st_mode);
+        printf(" %ld", (long)st.st_nlink);
+        printf(" %s %s", getpwuid(st.st_uid)->pw_name, getgrgid(st.st_gid)->gr_name);
+        printf(" %5ld", (long)st.st_size);
         char buf[64];
         strftime(buf, sizeof(buf), "%b %d %H:%M", localtime(&st.st_mtime));
-        fprintf(out, " %s", buf);
-        fprintf(out, " %s\n", entry->d_name);
+        printf(" %s", buf);
+        printf(" %s\n", entry->d_name);
       }
     } else {
-      fprintf(out, "%s\t", entry->d_name);
+      printf("%s\t", entry->d_name);
     }
   }
-  fprintf(out, "\n");
+  printf("\n");
 
   closedir(dir);
   
-  return COMMAND_SUCESSED;
+  return COMMAND_SUCCEEDED;
 }
 
 builtin_command_t builtin_ls = {.name = "ls",

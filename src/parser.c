@@ -6,23 +6,42 @@
 #include <stdlib.h>
 #include <string.h>
 
-void read_line(char **inp) {
-  size_t sz = 0;
-  ssize_t nread;
-  do {
-    nread = getline(inp, &sz, stdin);
-    if (nread == -1)
-      exit(EXIT_FAILURE);
-    if ((*inp)[nread - 1] == '\n')
-      (*inp)[nread - 1] = '\0';
-    break;
-  } while (1);
-}
+const char* RedirStr[] = {
+  "<",
+  ">",
+  ">>",
+  ">&",
+  ">>&"
+};
 
+const char* SepStr[] = {
+  ";", // GO_NEXT
+  "&&", // GO_NEXT_IF_SUCCEEDED
+  "||", // GO_NEXT_IF_FAILED
+  "&" // background
+};
+
+const size_t REDIR_LEN = sizeof(RedirStr) / sizeof(char*);
+const size_t SEP_LEN = sizeof(SepStr) / sizeof(char*);
+
+// TODO: this or main's ?
+// void read_line(char **inp) {
+//   size_t sz = 0;
+//   ssize_t nread;
+//   do {
+//     nread = getline(inp, &sz, stdin);
+//     if (nread == -1)
+//       exit(EXIT_FAILURE);
+//     if ((*inp)[nread - 1] == '\n')
+//       (*inp)[nread - 1] = '\0';
+//     break;
+//   } while (1);
+// }
 
 static void append_arg_to_command(Command *cmd, String arg) {
-  reserve_buffer((void**)(&cmd->argv), &cmd->argc, &cmd->argv_cap, 8, sizeof(String));
-  (cmd->argv)[cmd->argc++] = arg;
+  reserve_buffer((void**)(&cmd->argv), &cmd->argc, &cmd->argv_cap, 8, sizeof(char*));
+  (cmd->argv)[cmd->argc++] = arg.str;
+  (cmd->argv)[cmd->argc] = NULL;
 }
 
 static void append_redir_to_command(Command *cmd, Redirection redir) {
@@ -61,7 +80,7 @@ static ParserStatus parse_redirection(String redir, String target, Redirection *
       return PARSER_FAILED;
   out->target = target;
   
-  return PARSER_SUCESSED;
+  return PARSER_SUCCEEDED;
 }
 
 static void free_command(Command *cmd) {
@@ -94,7 +113,7 @@ static ParserStatus parse_command(StringVec *vec, Command *out) {
     }
     append_redir_to_command(out, redir);
   }
-  return PARSER_SUCESSED;
+  return PARSER_SUCCEEDED;
 }
 
 static void free_pipeline(Pipeline *pipe) {
@@ -154,7 +173,7 @@ static ParserStatus parse_pipeline(StringVec *vec, Pipeline *out) { // TODO: cha
 
   append_command_to_pipeline(out, now);
   
-  return PARSER_SUCESSED;
+  return PARSER_SUCCEEDED;
 }
 
 static void free_commandlist(CommandList *cmdlst) {
@@ -177,10 +196,10 @@ static Separator get_sep_id(char *str) {
   return S_NONE;
 }
 
- ParserStatus parse_line(CommandList *out) {
+ParserStatus parse_line(CommandList *out, char *line) {
   *out = (CommandList){0};
-  char *line = NULL;
-  read_line(&line);
+  // char *line = NULL;
+  // read_line(&line);
   int len = strlen(line);
   
   StringVec vec = {0};
@@ -249,7 +268,7 @@ static Separator get_sep_id(char *str) {
     append_pipeline_to_commandlist(out, now);
   }
   
-  return PARSER_SUCESSED;
+  return PARSER_SUCCEEDED;
 }
 
 static void print_redirection(Redirection *redir) {
@@ -260,7 +279,7 @@ static void print_command(Command *cmd) {
   printf("command -> []\n");
   printf("argv: [");
   for (int i = 0; i < cmd->argc; i++)
-    printf("%s, ", cmd->argv[i].str);
+    printf("%s, ", cmd->argv[i]);
   printf("]\nredirs[\n");
   for (int i = 0; i < cmd->nredirs; i++) {
     print_redirection(&cmd->redirs[i]);
@@ -269,7 +288,7 @@ static void print_command(Command *cmd) {
   printf("]\n");
 }
 
-static void print_pipeline(Pipeline *pipe) {
+void print_pipeline(Pipeline *pipe) {
   printf("pipeline -> [[]]\n");
   for (int i = 0; i < pipe->ncmds; i++) {
     print_command(&pipe->cmds[i]);

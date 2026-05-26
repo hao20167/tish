@@ -1,8 +1,10 @@
 #ifndef BUILTINS_H
 #define BUILTINS_H
 
+#include <stddef.h>
+
 typedef enum { 
-  COMMAND_SUCESSED = 0, 
+  COMMAND_SUCCEEDED = 0, 
   COMMAND_FAILED,
   COMMAND_NONE
 } CommandStatus;
@@ -15,5 +17,6 @@ struct builtin_command_t {
 };
 
 extern builtin_command_t *builtin_commands[];
+extern size_t n_builtin_commands;
 
 #endif
