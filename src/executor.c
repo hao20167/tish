@@ -6,7 +6,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/errno.h>
+#include <errno.h>
+#include <sys/wait.h>
 #include <stdlib.h>
+#include <signal.h>
 
 // TODO: shorten this
 static int apply_redir(Redirection *redir) {
@@ -188,22 +191,22 @@ static int exec_pipeline(Pipeline *pipeline) {
 }
 
 void exec_commandlist(CommandList *cl) {
-  int npipes = cl->npipes, exec_next = 1, pref = 1;
+  int npipes = cl->npipes, exec_next = 1, last_code = 0;
   Pipeline *pipes = cl->pipes;
 
   for (int i = 0; i < npipes; i++) {
-    int code = (exec_next ? exec_pipeline(&pipes[i]) : -1);
     Separator sep = pipes[i].sep;
+
+    if (exec_next) {
+      last_code = exec_pipeline(&pipes[i]);
+    }
 
     if (sep == S_SEMI) {
       exec_next = 1;
-      pref = 1;
     } else if (sep == S_OR) {
-      if (exec_next) pref |= (code == 0);
-      exec_next = (pref == 0); // GO_NEXT_IF_FAILED
+      exec_next = (last_code != 0); // GO_NEXT_IF_FAILED
     } else if (sep == S_AND) {
-      if (exec_next) pref &= (code == 0);
-      exec_next = (pref == 1); // GO_NEXT_IF_SUCCEEDED
+      exec_next = (last_code == 0); // GO_NEXT_IF_SUCCEEDED
     } else exec_next = 0;
     // else: BG/NONE
   }
