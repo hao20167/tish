@@ -4,9 +4,6 @@
 #include "utils.h"
 #include "stdio.h"
 
-extern const char* RedirStr[];
-extern const size_t REDIR_LEN;
-
 typedef enum {
   R_IN = 0,
   R_OUT,
@@ -86,5 +83,6 @@ struct CommandList {
 // void read_line(char **line);
 ParserStatus parse_line(CommandList *out, char *line);
 void print_pipeline(Pipeline *pipe);
+void free_commandlist(CommandList *cmdlst);
 
 #endif

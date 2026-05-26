@@ -7,6 +7,7 @@
 #include "executor.h"
 
 char* get_current_path() {
+  // TODO: resolve memory leak
   char* cwd = getcwd(NULL, 0), *home = getenv("HOME");
   if (home != NULL && strncmp(cwd, home, strlen(home)) == 0) {
     return cwd + strlen(home);
@@ -86,6 +87,8 @@ int main() {
     CommandList cl = {0};
     parse_line(&cl, line);
     exec_commandlist(&cl);
+
+    free_commandlist(&cl);
   }
   
   return 0;

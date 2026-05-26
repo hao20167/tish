@@ -176,7 +176,7 @@ static ParserStatus parse_pipeline(StringVec *vec, Pipeline *out) { // TODO: cha
   return PARSER_SUCCEEDED;
 }
 
-static void free_commandlist(CommandList *cmdlst) {
+void free_commandlist(CommandList *cmdlst) {
   for (int i = 0; i < cmdlst->npipes; i++)
     free_pipeline(&cmdlst->pipes[i]);
   free(cmdlst->pipes);
