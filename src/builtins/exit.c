@@ -1,8 +1,12 @@
 #include "exit.h"
 #include "builtins.h"
 #include "parser.h"
+#include <stdlib.h>
 
 static int handler(Command *cmd) {
+  printf("Exiting tish...");
+  getchar();
+  exit(0);
   return COMMAND_SUCCEEDED;
 }
 
