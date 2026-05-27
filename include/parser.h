@@ -4,9 +4,6 @@
 #include "utils.h"
 #include "stdio.h"
 
-extern const char* RedirStr[];
-extern const size_t REDIR_LEN;
-
 typedef enum {
   R_IN = 0,
   R_OUT,
@@ -26,34 +23,21 @@ typedef enum {
 
 typedef enum {
   PARSER_FAILED = 0,
-  PARSER_SUCESSED,
+  PARSER_SUCCEEDED,
   PARSER_NONE
 } ParserStatus;
 
+// move this to somewhere else maybe
 typedef struct Redirection Redirection;
 typedef struct Command Command;
 typedef struct Pipeline Pipeline;
 typedef struct CommandList CommandList;
 typedef struct Job Job; // TODO
 
-
-const char* RedirStr[] = {
-  "<",
-  ">",
-  ">>",
-  ">&",
-  ">>&"
-};
-
-const char* SepStr[] = {
-  ";",
-  "&&",
-  "||",
-  "&"
-};
-
-const size_t REDIR_LEN = sizeof(RedirStr) / sizeof(char*);
-const size_t SEP_LEN = sizeof(SepStr) / sizeof(char*);
+extern const char* RedirStr[];
+extern const char* SepStr[];
+extern const size_t REDIR_LEN;
+extern const size_t SEP_LEN;
 
 struct Redirection {
   RedirType type;
@@ -61,7 +45,7 @@ struct Redirection {
 };
 
 struct Command {
-  String *argv;
+  char **argv;
   size_t argc, argv_cap;
 
   Redirection *redirs;
@@ -74,15 +58,14 @@ struct Command {
 struct Pipeline {
   Command *cmds; // separated by '|'
   size_t ncmds, cmds_cap;
-  Separator sep;
+  Separator sep; // could be &
 };
 // connection type to the next pipeline
-//
 
 // ls -l | grep ".c" && pwd ; echo "Done"
 //
 // Pipelines:
-// ls -l | grep ".c"      GO_NEXT_IF_SUCESSED
+// ls -l | grep ".c"      GO_NEXT_IF_SUCCEEDED
 // pwd                    GO_NEXT
 // echo "Done"            END
 
@@ -97,6 +80,9 @@ struct CommandList {
 //   size_t npipes, pipes_cap;
 // };
 
-ParserStatus parse_line(CommandList *out);
+// void read_line(char **line);
+ParserStatus parse_line(CommandList *out, char *line);
+void print_pipeline(Pipeline *pipe);
+void free_commandlist(CommandList *cmdlst);
 
 #endif

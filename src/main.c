@@ -1,14 +1,17 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "utils.h"
 #include "parser.h"
-#include "builtins.h"
-
+#include "executor.h"
 
 char* get_current_path() {
-  return getcwd(NULL, 0);
+  // TODO: resolve memory leak
+  char* cwd = getcwd(NULL, 0), *home = getenv("HOME");
+  if (home != NULL && strncmp(cwd, home, strlen(home)) == 0) {
+    return cwd + strlen(home);
+  } else return cwd;
 }
 
 void print_prompt() {
@@ -21,6 +24,7 @@ void read_command(char **inp) {
   size_t sz = 0;
   ssize_t nread;
   do {
+    print_prompt();
     nread = getline(inp, &sz, stdin);
     if (nread == -1) exit(EXIT_FAILURE);
     if (nread == 0) continue;
@@ -33,54 +37,59 @@ void print_error(char* err) {
   printf("tish: %s\n", err);
 }
 
-int main() {
-  // while (1) {
-  //   print_prompt();
-  //   
-  //   char *inp = NULL;
-  //   read_command(&inp);
-  //   
-  //   // printf("tish: %s\n", inp);
-  //   // for (int i = 0; i < strlen(inp); i++) {
-  //   //   printf("%d ", inp[i]);
-  //   // }
-  //   // printf("\n");
-  //   
-  //   free(inp);
-  //   printf("\n");
-  // }
+volatile sig_atomic_t got_sigchld = 0;
+void sigchld_handler(int signo) {
+  (void)signo;
+  got_sigchld = 1;
+}
 
+void install_sigchld_handler() {
+  struct sigaction sa = {0};
+  sa.sa_handler = sigchld_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART; 
+  if (sigaction(SIGCHLD, &sa, NULL) < 0) {
+    perror("sigaction");
+    exit(1);
+  }
+}
 
-  char *str = NULL;
-  read_command(&str);
-  printf("> %s", str);
-
-  int len = strlen(str);
-
-  StringVec vec = {0};
-  for (int i = 0; i < len; i++) {
-    if (str[i] == ' ') continue;
-    String now = {0};
-    
-    int p = i - 1;
-    while (p + 1 < len && str[p + 1] != ' ') {
-      ++p;
-      append_char_to_string(&now, str[p]);
+// clean background
+void reap() {
+  int status;
+  pid_t pid;
+  while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    if (WIFEXITED(status)) {
+      printf("[]\tdone (%d)\n", WEXITSTATUS(status));
+    } else if (WIFSIGNALED(status)) {
+      printf("[]\tkilled (%d)\n", WTERMSIG(status));
     }
-
-    append_string_to_stringvec(&vec, now);
-
-    i = p;
   }
 
-  int n = vec.len;
-  for (int i = 0; i < n; i++) {
-    printf("%s\n", vec.arr[i].str);
+  got_sigchld = 0;
+}
+
+int main() {
+  // ignore all the bullsht
+  signal(SIGINT, SIG_IGN);
+  signal(SIGQUIT, SIG_IGN);
+  signal(SIGTSTP, SIG_IGN);
+  install_sigchld_handler();
+
+  while (1) {
+    if (got_sigchld) reap();
+
+    char *line = NULL;
+    read_command(&line);
+
+    if (got_sigchld) reap();
+
+    CommandList cl = {0};
+    parse_line(&cl, line);
+    exec_commandlist(&cl);
+
+    free_commandlist(&cl);
   }
-
-  Pipeline pipe = {0};
-  parse_pipeline(&vec, &pipe);
-  print_pipeline(&pipe);
-
+  
   return 0;
 }

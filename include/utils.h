@@ -3,6 +3,13 @@
 
 #include <stddef.h>
 
+#define SWAP(x,y) do {   \
+  typeof(x) _x = x;      \
+  typeof(y) _y = y;      \
+  x = _y;                \
+  y = _x;                \
+} while(0)
+
 typedef struct String String;
 typedef struct StringVec StringVec;
 
