@@ -311,7 +311,7 @@ void exec_commandlist(CommandList *cl) {
       last_code = exec_pipeline(&pipes[i]);
     }
 
-    if (sep == S_SEMI) {
+    if (sep == S_SEMI || sep == S_BG) {
       exec_next = 1;
     } else if (sep == S_OR) {
       exec_next = (last_code != 0); // GO_NEXT_IF_FAILED
