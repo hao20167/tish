@@ -28,6 +28,7 @@ static int handler(Command *cmd) {
         fprintf(stderr, "tish: cd: OLDPWD not set\n");
         return COMMAND_FAILED;
       }
+      printf("%s\n", target);
     } else {
       target = cmd->argv[1];
       if (strncmp(target, "~/", 2) == 0) {
