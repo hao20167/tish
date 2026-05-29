@@ -24,20 +24,6 @@ const char* SepStr[] = {
 const size_t REDIR_LEN = sizeof(RedirStr) / sizeof(char*);
 const size_t SEP_LEN = sizeof(SepStr) / sizeof(char*);
 
-// TODO: this or main's ?
-// void read_line(char **inp) {
-//   size_t sz = 0;
-//   ssize_t nread;
-//   do {
-//     nread = getline(inp, &sz, stdin);
-//     if (nread == -1)
-//       exit(EXIT_FAILURE);
-//     if ((*inp)[nread - 1] == '\n')
-//       (*inp)[nread - 1] = '\0';
-//     break;
-//   } while (1);
-// }
-
 static void append_arg_to_command(Command *cmd, String arg) {
   reserve_buffer((void**)(&cmd->argv), &cmd->argc, &cmd->argv_cap, 8, sizeof(char*));
   (cmd->argv)[cmd->argc++] = arg.str;

@@ -1,11 +1,12 @@
 #include "exit.h"
 #include "builtins.h"
 #include "parser.h"
+#include "history.h"
 #include <stdlib.h>
 
 static int handler(Command *cmd) {
-  printf("Exiting tish...");
-  getchar();
+  printf("Exiting tish...\n");
+  append_to_shell_history();
   exit(0);
   return COMMAND_SUCCEEDED;
 }

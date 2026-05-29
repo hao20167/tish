@@ -5,6 +5,9 @@
 #include <string.h>
 #include "parser.h"
 #include "executor.h"
+#include "history.h"
+
+char *HOME = NULL;
 
 char* get_current_path() {
   // TODO: resolve memory leak
@@ -76,6 +79,14 @@ int main() {
   signal(SIGTSTP, SIG_IGN);
   install_sigchld_handler();
 
+  HOME = getenv("HOME");
+  if (HOME == NULL) {
+    fprintf(stderr, "tish: HOME not set\n");
+    return EXIT_FAILURE;
+  }
+
+  init_shell_history();
+
   while (1) {
     if (got_sigchld) reap();
 
@@ -86,10 +97,12 @@ int main() {
 
     CommandList cl = {0};
     parse_line(&cl, line);
+    append_to_process_history(&cl);
     exec_commandlist(&cl);
 
     free_commandlist(&cl);
   }
+
   
   return 0;
 }
