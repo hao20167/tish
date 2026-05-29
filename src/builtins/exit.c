@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 static int handler(Command *cmd) {
-  printf("Exiting tish...\n");
+  printf("Exiting tish...");
   append_to_shell_history();
   exit(0);
   return COMMAND_SUCCEEDED;

@@ -96,13 +96,18 @@ int main() {
     if (got_sigchld) reap();
 
     CommandList cl = {0};
-    parse_line(&cl, line);
+    ParserStatus status = parse_line(&cl, line);
+
+    if (status == PARSER_FAILED) {
+      printf("tish: parser error\n");
+      continue;
+    }
+
     append_to_process_history(&cl);
     exec_commandlist(&cl);
-
     free_commandlist(&cl);
+    printf("\n");
   }
-
   
   return 0;
 }
