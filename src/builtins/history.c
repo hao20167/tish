@@ -44,11 +44,15 @@ void init_shell_history() {
     append_string_to_stringvec(&shell_history, now);
   }
 
+  free(tmp);
   fclose(shell);
 }
 
 // function that connect all the String in StringVec into 1 String, separated by ' '
 static String cat(StringVec vec, size_t n) {
+  if (n == 0) {
+    return (String){ .str = xstrdup(""), .len = 0, .cap = 1 };
+  }
   String ans = {0};
   size_t sz = 0;
   for (int i = 0; i < n; i++) {
@@ -74,6 +78,7 @@ static String cat(StringVec vec, size_t n) {
 }
 
 void append_to_process_history(CommandList *cl) {
+  if (cl->raw.len == 0) return;
   String now = cat(cl->raw, cl->raw.len);
   append_string_to_stringvec(&process_history, now);
 }
@@ -120,17 +125,22 @@ static int handler(Command *cmd) {
 
   if (cmd->argc == 2) {
     l = strtoi(cmd->argv[1]);
-    if (l > nall) {
+    if (l <= 0 || l > nall) {
       fprintf(stderr, "tish: history: no such event: %d\n", l);
       return COMMAND_FAILED;
     }
   } else if (cmd->argc == 3) {
     l = strtoi(cmd->argv[1]);
+    int r_in = strtoi(cmd->argv[2]);
+    if (l <= 0 || r_in <= 0) {
+      fprintf(stderr, "tish: history: numeric arguments must be positive\n");
+      return COMMAND_FAILED;
+    }
     if (l > nall) {
       fprintf(stderr, "tish: history: no events in that range\n");
       return COMMAND_FAILED;
     }
-    r = min(strtoi(cmd->argv[2]), nall);
+    r = min(r_in, nall);
     if (l > r) {
       fprintf(stderr, "tish: history: no events in that range\n");
       return COMMAND_FAILED;

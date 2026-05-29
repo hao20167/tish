@@ -81,8 +81,8 @@ int main() {
 
   HOME = getenv("HOME");
   if (HOME == NULL) {
-    fprintf(stderr, "tish: cd: HOME not set\n");
-    return 0;
+    fprintf(stderr, "tish: HOME not set\n");
+    return EXIT_FAILURE;
   }
 
   init_shell_history();
