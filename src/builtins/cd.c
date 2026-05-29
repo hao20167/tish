@@ -7,16 +7,13 @@
 #include <pwd.h>
 #include <string.h>
 
+extern char *HOME;
+
 static int handler(Command *cmd) {
   size_t argc = cmd->argc;
   if (argc >= 3) return COMMAND_FAILED;
 
-  char *target = NULL, *HOME = getenv("HOME");
-  if (HOME == NULL) {
-    fprintf(stderr, "tish: cd: HOME not set\n");
-    return COMMAND_FAILED;
-  }
-
+  char *target = NULL;
   char cwd[1024];
   getcwd(cwd, sizeof(cwd));
 
