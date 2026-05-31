@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +7,7 @@
 #include "parser.h"
 #include "executor.h"
 #include "history.h"
+#include "jobs.h"
 
 char *HOME = NULL;
 
@@ -15,6 +17,20 @@ char* get_current_path() {
   if (home != NULL && strncmp(cwd, home, strlen(home)) == 0) {
     return cwd + strlen(home);
   } else return cwd;
+}
+
+pid_t shell_pgid = 0;
+// to detach the shell from 'make run' process group since
+// it may cause infinite loop in read_command (ctrlZ)
+// codex my goat
+void init_shell_pg() {
+  shell_pgid = getpid();
+  if (setpgid(0, shell_pgid) < 0) {
+    perror("setpgrp shell");
+  }
+  if (tcsetpgrp(STDIN_FILENO, shell_pgid) < 0) {
+    perror("tcsetpgrp shell");
+  }
 }
 
 void print_prompt() {
@@ -29,7 +45,28 @@ void read_command(char **inp) {
   do {
     print_prompt();
     nread = getline(inp, &sz, stdin);
-    if (nread == -1) exit(EXIT_FAILURE);
+    if (nread == -1) {
+      if (feof(stdin)) {
+        printf("\nExiting tish...\n");
+        exit(EXIT_SUCCESS);
+      }
+      if (errno == EINTR) {
+        clearerr(stdin);
+        continue;
+      }
+      if (errno == EIO) {
+        clearerr(stdin);
+        // if read_command is not fg proc group, reset, then retry
+        if (tcsetpgrp(STDIN_FILENO, shell_pgid) < 0) {
+          perror("tcsetpgrp shell");
+          exit(EXIT_FAILURE);
+        }
+        printf("\n");
+        continue;
+      }
+      perror("getline");
+      exit(EXIT_FAILURE);
+    }
     if (nread == 0) continue;
     (*inp)[nread - 1] = '\0';
     break;
@@ -62,11 +99,15 @@ void reap() {
   int status;
   pid_t pid;
   while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    int jid = getjid_if_done(pid);
+    if (jid < 0) continue;
+    // TODO: too lazy to fully implement
     if (WIFEXITED(status)) {
-      printf("[]\tdone (%d)\n", WEXITSTATUS(status));
+      printf("[%d]\tdone (%d)\t%s\n", jid, WEXITSTATUS(status), getjid_pipe(jid));
     } else if (WIFSIGNALED(status)) {
-      printf("[]\tkilled (%d)\n", WTERMSIG(status));
-    }
+      printf("[%d]\tkilled (%d)\t%s\n", jid, WTERMSIG(status), getjid_pipe(jid));
+    } else continue;
+    free(getjid_pipe(jid)); // free only after all the proc in job was done
   }
 
   got_sigchld = 0;
@@ -77,7 +118,10 @@ int main() {
   signal(SIGINT, SIG_IGN);
   signal(SIGQUIT, SIG_IGN);
   signal(SIGTSTP, SIG_IGN);
+  signal(SIGTTOU, SIG_IGN);
+  signal(SIGTTIN, SIG_IGN);
   install_sigchld_handler();
+  init_shell_pg();
 
   HOME = getenv("HOME");
   if (HOME == NULL) {

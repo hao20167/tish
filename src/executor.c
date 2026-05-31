@@ -2,6 +2,7 @@
 #include "builtins.h"
 #include "parser.h"
 #include "utils.h"
+#include "jobs.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -178,10 +179,11 @@ static int exec_pipeline(Pipeline *pipeline) {
   // pipes[ncmds - 1][2]
   // write to pipes[i][1], then
   // read from pipes[i][0]
-  pid_t pids[ncmds];
+  pid_t pids[ncmds], pgid = 0;
 
   int ran_last_command_parent = 0;
   int code = 1;
+  int nproc = 0; // for jobs
 
   for (int i = 0; i < ncmds; i++) {
     if (i == ncmds - 1) {
@@ -215,6 +217,8 @@ static int exec_pipeline(Pipeline *pipeline) {
       signal(SIGTSTP, SIG_DFL);
       signal(SIGCHLD, SIG_DFL);
 
+      setpgid(pid, pgid);
+
       if (i < ncmds - 1) close(cur[0]); // child proc doesnt need read-end pipe
 
       if (i > 0) {
@@ -236,6 +240,15 @@ static int exec_pipeline(Pipeline *pipeline) {
       perror("exec_command");
       _exit(1);
     }
+    if (i == 0) pgid = pid;
+    if (pid > 0) nproc++;
+
+    setpgid(pid, pgid); // just to make sure
+    _pgid[pid] = pgid;
+    if (i == 0 && pipeline->sep != S_BG) {
+      tcsetpgrp(STDIN_FILENO, pgid);
+      // child proc is in the same pgroup with parent proc by default
+    }
 
     if (i < ncmds - 1) close(cur[1]);
     if (i >= 1) close(pre[0]);
@@ -246,22 +259,25 @@ static int exec_pipeline(Pipeline *pipeline) {
   }
 
   if (pipeline->sep == S_BG) {
-    printf("[] "); // TODO: job manager (array + first empty position)
+    int pos = add_pipeline_to_jobtable(pipeline, pgid, nproc, P_RUNNING);
+    printf("[%d] ", pos);
     for (int i = 0; i < ncmds; i++) {
       printf("%d ", pids[i]);
     }
     printf("\n");
     return 0; // wont need this anw, bg proc wouldnt appear between anytime soon
+    // WARN: above statement is wrong, what now?
   }
 
   for (int i = 0; i < ncmds; i++) {
-    if (pids[i] <= 0) continue; // avoiding waitpid -1 at ran_last_command_parent
+    if (pids[i] <= 0) continue; // avoiding waitpid -1 at ran_last_command_parent 
     int status;
-    while (waitpid(pids[i], &status, 0) < 0) {
-      if (errno == EINTR) { // SIGINT, could be from some bg proc (exit)
+    // wait until waitpid returns positive value (proc stopped/ended)
+    while (waitpid(pids[i], &status, WUNTRACED) < 0) { // WUNTRACED: also return if child is stopped (e.g. SIGTSTP (CtrlZ))
+      if (errno == EINTR) { // retry, waipid was interrupted
         continue;
       }
-      perror("waitpid");
+      perror("waitpid"); // e.g. ECHILD
       break;
     }
     if (i == ncmds - 1 && !ran_last_command_parent) {
@@ -269,9 +285,20 @@ static int exec_pipeline(Pipeline *pipeline) {
         code = WEXITSTATUS(status);
       } else if (WIFSIGNALED(status)) {
         code = 128 + WTERMSIG(status);
-      } 
-    }
+        printf("\n");
+      } else if (WIFSTOPPED(status)) {
+        int pos = add_pipeline_to_jobtable(pipeline, pgid, nproc, P_SUSPENDED);
+        printf("\ntish: suspended  %s", getjid_pipe(pos)); 
+        // TODO: split 1 job to multiple status
+        // e.g. 2 first pipes done, next 1 exited (1), the last 2 running/suspended
+        code = 1; // WARN:
+        break;
+      }
+    } // else code = 1; // code=1 -> false -> commandlist stops
+    nproc--;
   }
+
+  if(tcsetpgrp(STDIN_FILENO, getpgrp()) < 0) perror("tcsetpgrp restore");
 
   return code;
 
