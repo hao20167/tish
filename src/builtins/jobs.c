@@ -20,24 +20,7 @@ const char* ProcStatus[] = {
 
 const size_t PS_LEN = sizeof(ProcStatus) / sizeof(char*);
 
-typedef struct JobTable JobTable;
-
 int timer = 0; // WARN: overflow
-
-// 1 Job = 1 Pipeline = 1 pgid = n pids
-// false | sleep 3 & fasle &
-// => 2 pipeline
-// false | sleep 3 &
-// false &
-struct Job {
-  pid_t pgid;
-  char *pipe;
-  ProcState state;
-  int remaining;
-  int created_at;
-};
-
-#define JMAX 105
 Job jt[JMAX]; // TODO: 
 
 static char* cat(Pipeline *pipe) {
@@ -78,6 +61,8 @@ static char* cat(Pipeline *pipe) {
 
 pid_t _pgid[PMAX];
 
+// one more proc of gpid has done
+// return jid if job will be ended after that
 int getjid_if_done(pid_t pid) {
   pid_t pgid = _pgid[pid];
   if (pgid < 1) return -1; // in case not initalized
@@ -116,6 +101,11 @@ char* getjid_pipe(int jid) {
   return jt[jid].pipe;
 }
 
+int getjid_remaining(int jid) {
+  if (jid < 0 || jid >= JMAX) return -1;
+  return jt[jid].remaining;
+}
+
 // WARN: both cur&pre jobs arent quite the same as those in zsh
 int get_current_job() {
   assert(jt[0].created_at == 0);
@@ -140,7 +130,7 @@ int get_previous_job(int current_job) {
   int ans = 0;
   for (int i = 1; i < JMAX; i++) {
     if (jt[i].remaining == 0) continue;
-    if (jt[i].created_at == current_job) continue;
+    if (i == current_job) continue;
     if (jt[i].created_at > jt[ans].created_at) {
       ans = i;
     }

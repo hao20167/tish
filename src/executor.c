@@ -269,17 +269,19 @@ static int exec_pipeline(Pipeline *pipeline) {
     // WARN: above statement is wrong, what now?
   }
 
+  // TODO: may waitpid(pid) be replaced with waitpid(-pgid) ? 
   for (int i = 0; i < ncmds; i++) {
     if (pids[i] <= 0) continue; // avoiding waitpid -1 at ran_last_command_parent 
     int status;
     // wait until waitpid returns positive value (proc stopped/ended)
-    while (waitpid(pids[i], &status, WUNTRACED) < 0) { // WUNTRACED: also return if child is stopped (e.g. SIGTSTP (CtrlZ))
+    while (waitpid(pids[i], &status, WUNTRACED) < 0) { // WUNTRACED: also return>0 if child is stopped (e.g. SIGTSTP (CtrlZ))
       if (errno == EINTR) { // retry, waipid was interrupted
         continue;
       }
       perror("waitpid"); // e.g. ECHILD
       break;
     }
+    // ran_last_command_parent => code may have been calculated
     if (i == ncmds - 1 && !ran_last_command_parent) {
       if (WIFEXITED(status)) {
         code = WEXITSTATUS(status);

@@ -18,11 +18,30 @@ typedef enum {
   P_NONE
 } ProcState;
 
-extern pid_t _pgid[PMAX];
+typedef struct Job Job;
+
+// 1 Job = 1 Pipeline = 1 pgid = n pids
+// false | sleep 3 & fasle &
+// => 2 pipeline
+// false | sleep 3 &
+// false &
+struct Job {
+  pid_t pgid;
+  char *pipe;
+  ProcState state;
+  int remaining;
+  int created_at;
+};
+
+#define JMAX 105
+extern const char* ProcStatus[];
+extern pid_t _pgid[];
+extern Job jt[];
 extern builtin_command_t builtin_jobs;
 
 int getjid_if_done(pid_t pid);
 char* getjid_pipe(int jid);
+int getjid_remaining(int jid);
 int get_current_job();
 int get_previous_job(int current_job);
 int add_pipeline_to_jobtable(Pipeline *pipe, pid_t pgid, int nproc, ProcState state);
