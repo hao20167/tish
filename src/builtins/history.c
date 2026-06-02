@@ -21,7 +21,7 @@ void init_shell_history() {
   strcat(history_path, "/");
   strcat(history_path, hPATH);
 
-  FILE *shell = fopen(history_path, "r");
+  FILE *shell = fopen(history_path, "w+");
   if (shell == NULL) {
     perror("fopen history_path to read");
     exit(EXIT_FAILURE);

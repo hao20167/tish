@@ -146,7 +146,6 @@ int main() {
       fprintf(stderr, "tish: parser error\n");
       continue;
     }
-    }
 
     append_to_process_history(&cl);
     exec_commandlist(&cl);
