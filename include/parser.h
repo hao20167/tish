@@ -12,6 +12,7 @@ typedef enum {
   R_APPEND_BOTH,
   R_NONE
 } RedirType;
+// TODO: change this to Redir
 
 typedef enum {
   S_SEMI = 0,   // ;
@@ -26,6 +27,7 @@ typedef enum {
   PARSER_SUCCEEDED,
   PARSER_NONE
 } ParserStatus;
+// TODO: change this to ParserState
 
 // move this to somewhere else maybe
 typedef struct Redirection Redirection;

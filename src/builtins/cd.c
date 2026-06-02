@@ -11,7 +11,10 @@ extern char *HOME;
 
 static int handler(Command *cmd) {
   size_t argc = cmd->argc;
-  if (argc >= 3) return COMMAND_FAILED;
+  if (argc >= 3) {
+    fprintf(stderr, "tish: cd: too many arguments\n");
+    return COMMAND_FAILED;
+  }
 
   char *target = NULL;
   char cwd[1024];
@@ -28,6 +31,7 @@ static int handler(Command *cmd) {
         fprintf(stderr, "tish: cd: OLDPWD not set\n");
         return COMMAND_FAILED;
       }
+      printf("%s\n", target);
     } else {
       target = cmd->argv[1];
       if (strncmp(target, "~/", 2) == 0) {

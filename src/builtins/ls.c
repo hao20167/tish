@@ -75,7 +75,6 @@ static int handler(Command *cmd) {
       printf("%s\t\n", entry->d_name);
     }
   }
-  printf("\n");
 
   closedir(dir);
   
