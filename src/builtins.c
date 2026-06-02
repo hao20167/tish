@@ -1,4 +1,5 @@
 #include "builtins.h"
+#include "bg.h"
 #include "cd.h"
 #include "ls.h"
 #include "exit.h"
@@ -6,5 +7,5 @@
 #include "jobs.h"
 #include "fg.h"
 
-builtin_command_t *builtin_commands[] = {&builtin_cd, &builtin_ls, &builtin_exit, &builtin_history, &builtin_jobs, &builtin_fg};
+builtin_command_t *builtin_commands[] = {&builtin_cd, &builtin_ls, &builtin_exit, &builtin_history, &builtin_jobs, &builtin_fg, &builtin_bg};
 size_t n_builtin_commands = sizeof(builtin_commands) / sizeof(builtin_command_t*);

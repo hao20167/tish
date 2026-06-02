@@ -103,9 +103,9 @@ void reap() {
     if (jid < 0) continue;
     // TODO: too lazy to fully implement
     if (WIFEXITED(status)) {
-      printf("[%d]\tdone (%d)\t%s\n", jid, WEXITSTATUS(status), getjid_pipe(jid));
+      printf("[%d]\tdone (%d) %s\n", jid, WEXITSTATUS(status), getjid_pipe(jid));
     } else if (WIFSIGNALED(status)) {
-      printf("[%d]\tkilled (%d)\t%s\n", jid, WTERMSIG(status), getjid_pipe(jid));
+      printf("[%d]\tkilled (%d) %s\n", jid, WTERMSIG(status), getjid_pipe(jid));
     } else continue;
     free(getjid_pipe(jid)); // free only after all the proc in job was done
   }
