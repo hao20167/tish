@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 extern char *HOME;
 
@@ -19,12 +20,29 @@ static int handler(Command *cmd) {
     fprintf(stderr, "tish: source: not enough arguments\n");
     return COMMAND_FAILED;
   }
-  if (cmd->argc > 2) {
+  if (cmd->argc > 3) {
     fprintf(stderr, "tish: source: too many arguments\n");
     return COMMAND_FAILED;
   }
 
+  int verbose = 0;
   char *target = cmd->argv[1];
+  if (target[0] == '-') {
+    if (strcmp(target, "-v") != 0) {
+      fprintf(stderr, "tish: source: %s: invalid option\n", target);
+      return COMMAND_FAILED;
+    }
+    if (cmd->argc < 3) {
+      fprintf(stderr, "tish: source: not enough arguments\n");
+      return COMMAND_FAILED;
+    }
+    verbose = 1;
+    target = cmd->argv[2];
+  } else if (cmd->argc > 2) {
+    fprintf(stderr, "tish: source: too many arguments\n");
+    return COMMAND_FAILED;
+  }
+
   char *expanded = NULL;
   if (strcmp(target, "~") == 0) {
     target = HOME;
@@ -51,6 +69,17 @@ static int handler(Command *cmd) {
       line[--len] = '\0';
     }
     if (should_skip(line)) continue;
+    if (verbose) {
+      char *cwd = getcwd(NULL, 0);
+      if (cwd == NULL) {
+        perror("tish: source");
+        code = COMMAND_FAILED;
+      } else {
+        printf("[%s] + %s\n", cwd, line);
+        free(cwd);
+      }
+      fflush(stdout);
+    }
     if (exec_line(xstrdup(line)) != COMMAND_SUCCEEDED)
       code = COMMAND_FAILED;
   }
