@@ -26,7 +26,7 @@ pid_t shell_pgid = 0;
 void init_shell_pg() {
   shell_pgid = getpid();
   if (setpgid(0, shell_pgid) < 0) {
-    perror("setpgrp shell");
+    perror("setpgid shell");
   }
   if (tcsetpgrp(STDIN_FILENO, shell_pgid) < 0) {
     perror("tcsetpgrp shell");
@@ -143,8 +143,9 @@ int main() {
     ParserStatus status = parse_line(&cl, line);
 
     if (status == PARSER_FAILED) {
-      printf("tish: parser error\n");
+      fprintf(stderr, "tish: parser error\n");
       continue;
+    }
     }
 
     append_to_process_history(&cl);
