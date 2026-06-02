@@ -3,6 +3,7 @@
 #include "parser.h"
 #include "utils.h"
 #include "jobs.h"
+#include "path.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -97,6 +98,9 @@ static void exec_command(Command *cmd) {
   }
   
   execvp(cmd->argv[0], cmd->argv);
+  if (errno == ENOENT) {
+    exec_tish_path(cmd->argv[0], cmd->argv);
+  }
   perror(cmd->argv[0]);
   _exit(127);
 }

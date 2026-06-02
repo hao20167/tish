@@ -8,6 +8,7 @@
 #include "executor.h"
 #include "history.h"
 #include "jobs.h"
+#include "path.h"
 
 char *HOME = NULL;
 
@@ -129,6 +130,7 @@ int main() {
     return EXIT_FAILURE;
   }
 
+  init_tish_path();
   init_shell_history();
 
   while (1) {
