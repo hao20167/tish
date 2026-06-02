@@ -3,6 +3,7 @@
 
 #include "parser.h"
 
-void exec_commandlist(CommandList *cl);
+int exec_line(char *line);
+int exec_commandlist(CommandList *cl);
 
 #endif
