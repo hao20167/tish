@@ -72,7 +72,7 @@ static int handler(Command *cmd) {
         printf(" %s\n", entry->d_name);
       }
     } else {
-      printf("%s\t\n", entry->d_name);
+      printf("%s\n", entry->d_name);
     }
   }
 

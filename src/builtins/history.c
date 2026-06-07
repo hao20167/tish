@@ -21,11 +21,12 @@ void init_shell_history() {
   strcat(history_path, "/");
   strcat(history_path, hPATH);
 
-  FILE *shell = fopen(history_path, "w+");
+  FILE *shell = fopen(history_path, "a+");
   if (shell == NULL) {
     perror("fopen history_path to read");
     exit(EXIT_FAILURE);
   }
+  rewind(shell);
   
   char *tmp = NULL;
   size_t sz = 0;

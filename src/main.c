@@ -14,9 +14,11 @@ char *HOME = NULL;
 char* get_current_path() {
   // TODO: resolve memory leak
   char* cwd = getcwd(NULL, 0), *home = getenv("HOME");
+  if (cwd == NULL) return NULL;
   if (home != NULL && strncmp(cwd, home, strlen(home)) == 0) {
-    return cwd + strlen(home);
-  } else return cwd;
+    memmove(cwd, cwd + strlen(home), strlen(cwd) - strlen(home) + 1);
+  }
+  return cwd;
 }
 
 pid_t shell_pgid = 0;
