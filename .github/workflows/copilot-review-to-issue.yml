@@ -1,0 +1,43 @@
+name: Create issue from Copilot review comment
+
+on:
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  create-issue:
+    if: contains(github.event.comment.user.login, 'copilot')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const c = context.payload.comment;
+            const pr = context.payload.pull_request;
+
+            const title = `Copilot review follow-up: ${c.path}:${c.line || c.original_line || 'n/a'}`;
+
+            const body = [
+              `Created from Copilot review comment: ${c.html_url}`,
+              ``,
+              `PR: ${pr.html_url}`,
+              `File: \`${c.path}\``,
+              `Line: ${c.line || c.original_line || 'n/a'}`,
+              ``,
+              `## Copilot comment`,
+              c.body
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['copilot-review']
+            });

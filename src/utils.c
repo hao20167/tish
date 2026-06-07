@@ -1,6 +1,7 @@
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void free_string(String str) {
   free(str.str);
@@ -30,14 +31,14 @@ void *xrealloc(void *buf, size_t size) {
   return tmp;
 }
 
-// char *xstrdup(const char *str) {
-//   char *tmp = strdup(str);
-//   if (tmp == NULL) {
-//     perror("strdup");
-//     exit(EXIT_FAILURE);
-//   }
-//   return tmp;
-// }
+char *xstrdup(const char *str) {
+  char *tmp = strdup(str);
+  if (tmp == NULL) {
+    perror("strdup");
+    exit(EXIT_FAILURE);
+  }
+  return tmp;
+}
 
 // buf: pointer to the position of array
 void reserve_buffer(void **buf, size_t *len, size_t *cap, size_t init, size_t sz) {

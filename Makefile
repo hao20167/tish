@@ -11,11 +11,11 @@ $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET)
 
 obj/%.o: src/%.c
-	mkdir -p obj
+	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf obj/*.o $(TARGET)
+	rm -rf obj bin
 
 run:
 	make clean
