@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+typedef struct Command Command;
+
 typedef enum { 
   COMMAND_SUCCEEDED = 0, 
   COMMAND_FAILED,
@@ -13,7 +15,7 @@ typedef struct builtin_command_t builtin_command_t;
 
 struct builtin_command_t {
   char *name, *description;
-  int (*handler)();
+  int (*handler)(Command *);
   int run_in_parent;
 };
 
