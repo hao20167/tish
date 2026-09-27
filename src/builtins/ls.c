@@ -83,7 +83,7 @@ static int handler(Command *cmd) {
 
 builtin_command_t builtin_ls = {
   .name = "ls", 
-  .description = "list all the files/folders in path $(target)\n$(target) = cwd by default", 
+  .description = "list all files", 
   .handler = handler,
   .run_in_parent = 0
 };

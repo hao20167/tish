@@ -1,8 +1,11 @@
 _DEMO_/
 .DS_Store
-test/
+/test/
 .cache/
 Session.vim
 compile_commands.json
-bin/
-obj/
+/bin/
+/obj/
+tests/.artifacts/
+tests/.runtime/
+tests/output/

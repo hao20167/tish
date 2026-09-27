@@ -8,6 +8,7 @@
 #include "executor.h"
 #include "history.h"
 #include "jobs.h"
+#include "path.h"
 
 char *HOME = NULL;
 
@@ -131,6 +132,7 @@ int main() {
     return EXIT_FAILURE;
   }
 
+  init_tish_path();
   init_shell_history();
 
   while (1) {
@@ -141,17 +143,7 @@ int main() {
 
     if (got_sigchld) reap();
 
-    CommandList cl = {0};
-    ParserStatus status = parse_line(&cl, line);
-
-    if (status == PARSER_FAILED) {
-      fprintf(stderr, "tish: parser error\n");
-      continue;
-    }
-
-    append_to_process_history(&cl);
-    exec_commandlist(&cl);
-    free_commandlist(&cl);
+    exec_line(line);
     printf("\n");
   }
   

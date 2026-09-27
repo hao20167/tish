@@ -31,6 +31,7 @@ void init_shell_history() {
   char *tmp = NULL;
   size_t sz = 0;
   ssize_t len;
+  rewind(shell);
   while ((len = getline(&tmp, &sz, shell)) > 0) { 
     if (len == 1) continue;
     // last chr is "\n"

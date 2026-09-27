@@ -3,6 +3,8 @@
 #include "parser.h"
 #include "utils.h"
 #include "jobs.h"
+#include "path.h"
+#include "history.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -97,6 +99,9 @@ static void exec_command(Command *cmd) {
   }
   
   execvp(cmd->argv[0], cmd->argv);
+  if (errno == ENOENT) {
+    exec_tish_path(cmd->argv[0], cmd->argv);
+  }
   perror(cmd->argv[0]);
   _exit(127);
 }
@@ -329,7 +334,7 @@ fail:
   return 1;
 }
 
-void exec_commandlist(CommandList *cl) {
+int exec_commandlist(CommandList *cl) {
   int npipes = cl->npipes, exec_next = 1, last_code = 0;
   Pipeline *pipes = cl->pipes;
 
@@ -349,4 +354,21 @@ void exec_commandlist(CommandList *cl) {
     } else exec_next = 0;
     // else: BG/NONE
   }
+
+  return last_code;
+}
+
+int exec_line(char *line) {
+  CommandList cl = {0};
+  ParserStatus status = parse_line(&cl, line);
+
+  if (status == PARSER_FAILED) {
+    fprintf(stderr, "tish: parser error\n");
+    return COMMAND_FAILED;
+  }
+
+  append_to_process_history(&cl);
+  int code = exec_commandlist(&cl);
+  free_commandlist(&cl);
+  return code == 0 ? COMMAND_SUCCEEDED : COMMAND_FAILED;
 }
